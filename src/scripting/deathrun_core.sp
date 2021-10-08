@@ -25,6 +25,22 @@ public void OnMapStart()
 {
 	g_Live = false;
 	g_CheckTeams = false;
+
+	CreateTimer(1.0, ScanEdicts);
+}
+
+//This is to check for entities that may crash players or the server:
+public Action ScanEdicts(Handle timer)
+{
+	int idx = -1;
+	while((idx = FindEntityByClassname(idx, "trigger_fire")) != -1)
+	{
+		if(IsValidEdict(idx))
+		{
+			AcceptEntityInput(idx, "Kill");
+			PrintToServer("[DR] Found and deleted potentially harmful entity: #%i", idx);
+		}
+	}
 }
 
 public void OnPluginStart()
@@ -68,6 +84,17 @@ public void OnPluginStart()
 	Database.Connect(Database_Connect, "deathrun");
 
 	if(g_cvBlueQueue.BoolValue) g_BlueQueue = new ArrayList();
+}
+
+public Action OnStartTouch(const char[] output, int caller, int activator, float delay)
+{
+	PrintToServer("Entity Output triggered:");
+
+	char cName[32]; char aName[32];
+	GetEdictClassname(caller, cName, sizeof(cName));
+	GetEdictClassname(activator, aName, sizeof(aName));
+	PrintToServer("OnStartTouch: %s:\nCaller: %i (%s), Activator: %i (%s)\n", output, caller, cName, activator, aName);
+	return Plugin_Handled;
 }
 
 public Action Command_DebugQueue(int args)
@@ -559,7 +586,7 @@ public Action Event_PlayerDeath(Event e, const char[] eventName, bool noBroadcas
 	int attacker = GetClientOfUserId(e.GetInt("attacker"));
 
 	//Push query data to dirty list:
-	if(client != attacker)
+	if(client != attacker && attacker > 0)
 	{
 		//Give attacker + 1 frag:
 		char steamid[64]; GetClientAuthId(attacker, AuthId_SteamID64, steamid, sizeof(steamid));
@@ -672,6 +699,8 @@ public Action Event_RoundStart(Event e, const char[] eventName, bool noBroadcast
 			DispatchSpawn(i);
 		}
 	}
+
+	CreateTimer(1.0, ScanEdicts);
 }
 
 public void OnRatioChanged(ConVar cvar, const char[] oldVal, const char[] newVal)
@@ -707,9 +736,9 @@ public void OnQueueChanged(ConVar cvar, const char[] oldVal, const char[] newVal
 
 public Plugin myinfo =
 {
-	name = "HLR Deathrun Project",
+	name = "HLR Project Deathrun",
 	author = "",
 	description = "a deathrun game mode",
-	version = "0.1.15",
+	version = "0.2.55",
 	url = "https://sourcemod.net"
 };
